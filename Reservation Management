@@ -53,12 +53,66 @@ bool ReservationManager::loadReservations(const std::string& filename) {
     return true;
 }
  
+// Validates a date string is in MM/DD/YYYY format and represents a real
+// calendar date (correct days-per-month, including leap years).
+bool ReservationManager::isValidDate(const std::string& date) {
+    // Expected shape: MM/DD/YYYY -> exactly 10 characters.
+    if (date.size() != 10 || date[2] != '/' || date[5] != '/') {
+        return false;
+    }
+ 
+    std::string monthStr = date.substr(0, 2);
+    std::string dayStr = date.substr(3, 2);
+    std::string yearStr = date.substr(6, 4);
+ 
+    for (char c : monthStr) if (!isdigit(static_cast<unsigned char>(c))) return false;
+    for (char c : dayStr)   if (!isdigit(static_cast<unsigned char>(c))) return false;
+    for (char c : yearStr)  if (!isdigit(static_cast<unsigned char>(c))) return false;
+ 
+    int month = std::stoi(monthStr);
+    int day = std::stoi(dayStr);
+    int year = std::stoi(yearStr);
+ 
+    if (month < 1 || month > 12) return false;
+    if (year < 1900 || year > 2999) return false;
+ 
+    static const int daysInMonth[] = {31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31};
+    int maxDay = daysInMonth[month - 1];
+ 
+    bool isLeapYear = (year % 4 == 0 && year % 100 != 0) || (year % 400 == 0);
+    if (month == 2 && isLeapYear) maxDay = 29;
+ 
+    if (day < 1 || day > maxDay) return false;
+ 
+    return true;
+}
+ 
+// Checks whether 'studentID' already has an active reservation for
+// 'resourceID', to prevent the same student double-booking the same
+// resource. O(n) traversal of the active-reservations linked list.
+bool ReservationManager::hasDuplicateReservation(int studentID, const std::string& resourceID) const {
+    Reservation dummy;
+    return activeReservations.find(
+        [studentID, resourceID](const Reservation& r) {
+            return r.getStudentID() == studentID && r.getResourceID() == resourceID;
+        },
+        dummy);
+}
+ 
 CreateResult ReservationManager::createReservation(int studentID, const std::string& studentName,
                                                      const std::string& resourceID,
                                                      const std::string& date) {
     Resource* resource = findResource(resourceID);
     if (resource == nullptr) {
         return CreateResult::INVALID_RESOURCE;
+    }
+ 
+    if (!isValidDate(date)) {
+        return CreateResult::INVALID_DATE;
+    }
+ 
+    if (hasDuplicateReservation(studentID, resourceID)) {
+        return CreateResult::DUPLICATE_REQUEST;
     }
  
     if (!resource->isAvailable()) {
