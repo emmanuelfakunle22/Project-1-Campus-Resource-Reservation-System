@@ -3,9 +3,9 @@
 #include <sstream>
 #include <iostream>
 #include <iomanip>
+#include <cctype>
  
 ReservationManager::ReservationManager() : nextReservationID(301) {}
-
 // Loads resources from a pipe-delimited file:
 //   ResourceID|ResourceName|ResourceType|Available|Unavailable
 bool ReservationManager::loadResources(const std::string& filename) {
@@ -100,3 +100,4 @@ Resource* ReservationManager::findResource(const std::string& resourceID) {
     }
     return nullptr;
 }
+ 
